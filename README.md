@@ -4,7 +4,7 @@ An Omarchy shell plugin and Linux CLI (`almactl`) for the **AULA F108 Pro**
 keyboard (also sold as **Alma F108 Pro**) connected through its 2.4 GHz USB
 dongle.
 
-<img src="docs/screenshot.png" alt="Plugin panel with the LCD dashboard mirror" width="340">
+<img src="preview.png" alt="Plugin panel with the LCD dashboard mirror" width="340">
 
 - **LCD dashboard mirror**: date, battery, live clock, and connection and
   Caps/Num Lock tiles styled like the keyboard's own screen (lit when active).
