@@ -21,6 +21,10 @@ const (
 	vendorID        = 0x05AC // spoofed Apple ID used by the F108 Pro dongle
 	productID       = 0x024F
 	vendorUsagePage = 0xFF60
+
+	wiredVendorID  = 0x0C45 // Sonix, keyboard on its USB cable
+	wiredProductID = 0x800A
+	wiredUsagePage = 0xFF13 // 64-byte feature reports, interface 3
 )
 
 func main() {
@@ -56,7 +60,7 @@ func usage() {
 commands:
   list       show the keyboard's HID interfaces
   listen     print reports arriving on the vendor channels (read-only)
-  info       show battery level and dongle status
+  info       show the connection (usb or 2.4g) and, over 2.4g, battery level
   sync-time  set the keyboard clock to the system time
   light      set the backlight: light [-b 0-5] [-s 0-5] [-rainbow] <mode> [RRGGBB]
              modes: off, static, breath, spectrum, rolling`)
@@ -69,7 +73,8 @@ func keyboardNodes() ([]hidraw.Info, error) {
 	}
 	var out []hidraw.Info
 	for _, i := range all {
-		if i.VendorID == vendorID && i.ProductID == productID {
+		if (i.VendorID == vendorID && i.ProductID == productID) ||
+			(i.VendorID == wiredVendorID && i.ProductID == wiredProductID) {
 			out = append(out, i)
 		}
 	}
@@ -137,14 +142,49 @@ func openDongle() (*aula.Conn, error) {
 		return nil, err
 	}
 	for _, n := range nodes {
-		if n.UsagePage == vendorUsagePage && n.Interface == 3 {
+		if n.VendorID == vendorID && n.UsagePage == vendorUsagePage && n.Interface == 3 {
 			return aula.Open(n.Path)
 		}
 	}
 	return nil, errors.New("vendor channel (interface 3, usage page ff60) not found")
 }
 
+// wiredNode returns the config interface of a keyboard on its USB cable, if any.
+func wiredNode() (hidraw.Info, bool) {
+	nodes, err := keyboardNodes()
+	if err != nil {
+		return hidraw.Info{}, false
+	}
+	for _, n := range nodes {
+		if n.VendorID == wiredVendorID && n.UsagePage == wiredUsagePage {
+			return n, true
+		}
+	}
+	return hidraw.Info{}, false
+}
+
+// configurator is what both transports can set.
+type configurator interface {
+	SetLight(aula.Light) error
+	SyncClock(time.Time) error
+	Close() error
+}
+
+// openKeyboard prefers the cable: when it is plugged in, the keyboard is
+// configured over USB even if the dongle is also connected.
+func openKeyboard() (configurator, error) {
+	if n, ok := wiredNode(); ok {
+		return aula.OpenWired(n.Path)
+	}
+	return openDongle()
+}
+
 func cmdInfo() error {
+	if _, ok := wiredNode(); ok {
+		// The wired protocol has no battery or status query.
+		fmt.Println("connection usb")
+		return nil
+	}
 	c, err := openDongle()
 	if err != nil {
 		return err
@@ -158,13 +198,14 @@ func cmdInfo() error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("connection 2.4g")
 	fmt.Printf("battery  %d%%\n", battery)
 	fmt.Printf("status   % x\n", status[3:31])
 	return nil
 }
 
 func cmdSyncTime() error {
-	c, err := openDongle()
+	c, err := openKeyboard()
 	if err != nil {
 		return err
 	}
@@ -212,7 +253,7 @@ func cmdLight(args []string) error {
 		light.R, light.G, light.B = rgb[0], rgb[1], rgb[2]
 	}
 
-	c, err := openDongle()
+	c, err := openKeyboard()
 	if err != nil {
 		return err
 	}

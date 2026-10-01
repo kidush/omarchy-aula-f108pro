@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
@@ -128,6 +129,36 @@ func (d *Device) Close() error { return d.f.Close() }
 // Write sends an output report. For devices without report IDs, the first byte
 // must be 0x00 followed by the report payload.
 func (d *Device) Write(report []byte) (int, error) { return d.f.Write(report) }
+
+// SetFeature sends a feature report. For devices without report IDs, the first
+// byte must be 0x00 followed by the report payload.
+func (d *Device) SetFeature(report []byte) error {
+	return d.ioctl(0x06, report) // HIDIOCSFEATURE(len)
+}
+
+// GetFeature reads a feature report into report. report[0] selects the report
+// ID (0x00 when the device has none) and is overwritten with the reply.
+func (d *Device) GetFeature(report []byte) error {
+	return d.ioctl(0x07, report) // HIDIOCGFEATURE(len)
+}
+
+func (d *Device) ioctl(nr uintptr, buf []byte) error {
+	if len(buf) == 0 {
+		return errors.New("hidraw: empty feature report")
+	}
+	// _IOC(_IOC_READ|_IOC_WRITE, 'H', nr, len)
+	req := uintptr(3)<<30 | uintptr(len(buf))<<16 | uintptr('H')<<8 | nr
+	for {
+		_, _, errno := unix.Syscall(unix.SYS_IOCTL, d.f.Fd(), req, uintptr(unsafe.Pointer(&buf[0])))
+		if errno == unix.EINTR {
+			continue
+		}
+		if errno != 0 {
+			return fmt.Errorf("hidraw feature ioctl: %w", errno)
+		}
+		return nil
+	}
+}
 
 // ErrTimeout is returned by Read when no report arrives in time.
 var ErrTimeout = errors.New("hidraw: read timeout")

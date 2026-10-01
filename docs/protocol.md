@@ -381,6 +381,13 @@ Your dongle descriptor has no 0xFFFF collection in the facts given, so this may 
 
 ## 7. Wired USB path (for comparison, 0C45:800A)
 
+Verified on hardware (Alma F108 Pro, 2026-10-01) with `almactl` over Linux hidraw: backlight
+and clock transactions exactly as listed below, on interface 3 (usage page 0xFF13, the
+report descriptor declares 64-byte input, output and feature reports with no report ID),
+sent with `HIDIOCSFEATURE`/`HIDIOCGFEATURE` and a leading 0x00 byte. The begin, apply
+and finalize packets carry **no** `AA 55` trailer, as in the vendor driver; parsiya's notes
+add one, but it is not needed. Interface 2 (usage page 0xFF68) is the LCD channel.
+
 Transport [code: FUN_0044edc0, FUN_00451330, FUN_004513d0]: 64-byte **feature** reports
 (`HidD_SetFeature` 0x41 bytes with report ID 0), optional readback by `IOCTL_HID_GET_FEATURE`
 (0xB0192). `Sleep(35)` before every packet. Payloads > 65 bytes are sent as consecutive

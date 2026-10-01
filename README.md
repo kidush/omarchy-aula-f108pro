@@ -1,8 +1,8 @@
 # AULA F108 Pro for Omarchy
 
 An Omarchy shell plugin and Linux CLI (`almactl`) for the **AULA F108 Pro**
-keyboard (also sold as **Alma F108 Pro**) connected through its 2.4 GHz USB
-dongle.
+keyboard (also sold as **Alma F108 Pro**), over its 2.4 GHz USB dongle or its
+USB cable.
 
 <img src="preview.png" alt="Plugin panel with the LCD dashboard mirror" width="340">
 
@@ -10,15 +10,18 @@ dongle.
   Caps/Num Lock tiles styled like the keyboard's own screen (lit when active).
 - **Backlight**: color swatches, free hue, hex input, brightness, and effects
   (static, breathing, rainbow, off). Can follow the Omarchy theme accent.
-- **Battery** in the bar tooltip, refreshed every minute and when the panel opens.
+- **Battery** in the bar tooltip, refreshed every minute and when the panel opens
+  (2.4 GHz only; on the cable the keyboard is charging and reports no level).
 - **Clock sync** for the keyboard's display, on demand and after every login.
 - Right-click the bar icon to toggle the backlight.
 
 ## Requirements
 
 - Omarchy with the Quickshell shell (plugin schema version 1)
-- The keyboard on its **2.4 GHz dongle** (`05ac:024f`, "F108Pro Dongle").
-  Wired and Bluetooth modes are not supported.
+- The keyboard on its **2.4 GHz dongle** (`05ac:024f`, "F108Pro Dongle") or its
+  **USB cable** (`0c45:800a`, "SONiX AULA F108Pro"). When both are plugged in,
+  the cable is used. Bluetooth is not supported: even the official AULA software
+  cannot configure the keyboard over Bluetooth.
 - Go (matching `go.mod`) to build `almactl`
 - `jq`, `flock` and `timeout` (present on a stock Omarchy install)
 
@@ -41,16 +44,16 @@ From a local checkout, `bash install.sh` copies the plugin into
 
 ### Device permissions
 
-`almactl` talks to the dongle through `/dev/hidraw*`. If `almactl info` says
+`almactl` talks to the keyboard through `/dev/hidraw*`. If `almactl info` says
 permission denied, install the udev rule once (it grants the logged-in user
-access to this dongle only):
+access to this keyboard's dongle and cable only):
 
 ```sh
 sudo install -m 644 udev/70-aula-f108pro.rules /etc/udev/rules.d/
 sudo udevadm control --reload && sudo udevadm trigger
 ```
 
-Then unplug and replug the dongle.
+Then unplug and replug the dongle or cable.
 
 ### Uninstall
 
@@ -76,8 +79,8 @@ omarchy-shell kidush.aula-f108pro toggleLight
 
 ```sh
 go build -o bin/almactl ./cmd/almactl
-./bin/almactl list        # the dongle's HID interfaces
-./bin/almactl info        # battery and dongle status
+./bin/almactl list        # the keyboard's HID interfaces (dongle and cable)
+./bin/almactl info        # connection (usb or 2.4g) and, over 2.4g, battery
 ./bin/almactl listen      # print vendor-channel reports (read-only)
 ./bin/almactl sync-time   # set the keyboard clock to system time
 ./bin/almactl light -b 5 static FF0000   # modes: off, static, breath, spectrum, rolling
@@ -85,7 +88,7 @@ go test ./...
 ```
 
 `internal/hidraw` handles Linux HID access; `internal/aula` implements the
-dongle protocol. Protocol research is in [docs/protocol.md](docs/protocol.md)
+2.4 GHz (`aula.go`) and wired (`wired.go`) protocols. Protocol research is in [docs/protocol.md](docs/protocol.md)
 and [docs/protocol-hfd-web.md](docs/protocol-hfd-web.md). Remapping, macros
 and screen uploads are documented research, not plugin controls yet.
 

@@ -70,7 +70,8 @@ Item {
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: screen.battery >= 0 ? screen.battery + "%" : "--%"
+            // On the cable there is no battery reading; the keyboard is charging.
+            text: screen.battery >= 0 ? screen.battery + "%" : (screen.connection === "usb" ? "USB" : "--%")
             color: "#8FB6E0"
             font.family: screen.lcdFont
             font.pixelSize: 17 * screen.u
@@ -89,6 +90,16 @@ Item {
                 color: "transparent"
                 border.width: 1.6 * screen.u
                 border.color: "#5FB8E8"
+
+                // Charging over the cable: the keyboard reports no level there.
+                Text {
+                    visible: screen.battery < 0 && screen.connection === "usb"
+                    anchors.centerIn: parent
+                    text: "󱐋"
+                    color: "#5BE83A"
+                    font.family: screen.iconFont
+                    font.pixelSize: 12 * screen.u
+                }
 
                 Row {
                     anchors.left: parent.left

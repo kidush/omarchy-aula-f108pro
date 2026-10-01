@@ -15,6 +15,7 @@ Panel {
 
     readonly property string runner: decodeURIComponent(String(Qt.resolvedUrl("keyboard.sh")).replace(/^file:\/\//, ""))
     property int battery: -1
+    property string connection: "dongle" // usb | dongle, from almactl info
     property string status: "Verificando teclado…"
     property string syncStatus: ""
     property string operation: "info"
@@ -43,6 +44,11 @@ Panel {
         operation = action
         request.command = ["bash", runner, action]
         request.running = true
+    }
+
+    function connectionLabel() {
+        // Over the cable the keyboard reports no battery (it is charging).
+        return connection === "usb" ? "Conectado por cabo USB" : "Conectado pelo dongle 2.4G"
     }
 
     function modeLabel(value) {
@@ -126,12 +132,14 @@ Panel {
                 return
             }
             if (root.operation === "info") {
+                const link = output.text.match(/^connection\s+(\S+)/m)
                 const match = output.text.match(/^battery\s+(\d+)%/m)
+                root.connection = link && link[1] === "usb" ? "usb" : "dongle"
                 root.battery = match ? Number(match[1]) : -1
-                root.status = match ? "Conectado pelo dongle 2.4G" : "Bateria indisponível"
+                root.status = root.connectionLabel()
             } else {
                 root.syncStatus = output.text.trim().replace(/^clock set to/, "Relógio ajustado para")
-                root.status = "Conectado pelo dongle 2.4G"
+                root.status = root.connectionLabel()
             }
         }
     }
@@ -190,7 +198,8 @@ Panel {
         anchors.fill: parent
         bar: root.bar
         text: "󰌌"
-        tooltipText: root.battery >= 0 ? "F108 Pro · " + root.battery + "%" : "F108 Pro · indisponível"
+        tooltipText: root.battery >= 0 ? "F108 Pro · " + root.battery + "%"
+            : (root.connection === "usb" ? "F108 Pro · cabo USB" : "F108 Pro · indisponível")
         onPressed: function(b) {
             if (b === Qt.RightButton) root.changeLight({ mode: root.light.mode === "off" ? "static" : "off" })
             else root.toggle()
@@ -225,7 +234,7 @@ Panel {
                     width: parent.width
                     height: implicitHeight
                     battery: root.battery
-                    connection: "dongle"
+                    connection: root.connection
                     capsLock: root.capsLock
                     numLock: root.numLock
                     running: root.opened

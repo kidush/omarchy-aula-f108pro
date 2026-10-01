@@ -142,30 +142,40 @@ func (c *Conn) SetLight(l Light) error {
 }
 
 func lightPacket(l Light) Packet {
+	return NewPacket(CmdLight, 0x10, 0, lightBlock(l)...)
+}
+
+// lightBlock is the 16-byte backlight setting shared by the 2.4G packet
+// (offset 3) and the wired data report (offset 0).
+func lightBlock(l Light) []byte {
 	if l.Mode == ModeOff {
 		// The vendor driver leaves every field after the mode zeroed for "off".
-		return NewPacket(CmdLight, 0x10, 0, ModeOff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xAA, 0x55)
+		return []byte{ModeOff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xAA, 0x55}
 	}
 	var colorful byte
 	if l.Colorful {
 		colorful = 1
 	}
-	return NewPacket(CmdLight, 0x10, 0,
+	return []byte{
 		l.Mode, l.R, l.G, l.B,
 		0x00, 0x00, 0x00, 0x00,
 		colorful, min(l.Brightness, MaxLevel), min(l.Speed, MaxLevel), l.Direction,
 		0x00, 0x00,
 		0xAA, 0x55,
-	)
+	}
 }
 
 func clockPacket(t time.Time) Packet {
-	return NewPacket(CmdClockSync, 0x10, 0,
+	return NewPacket(CmdClockSync, 0x10, 0, append(clockFields(t), 0x00, 0x00, 0x00, 0xAA, 0x55)...)
+}
+
+// clockFields is the date/time block shared by both transports; only the
+// position of the AA 55 trailer differs.
+func clockFields(t time.Time) []byte {
+	return []byte{
 		0x00, 0x01, 0x5A,
-		byte(t.Year()%100), byte(t.Month()), byte(t.Day()),
+		byte(t.Year() % 100), byte(t.Month()), byte(t.Day()),
 		byte(t.Hour()), byte(t.Minute()), byte(t.Second()),
 		0x00, byte(t.Weekday()),
-		0x00, 0x00, 0x00,
-		0xAA, 0x55,
-	)
+	}
 }

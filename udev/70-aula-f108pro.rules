@@ -1,3 +1,6 @@
-# AULA / Alma F108 Pro 2.4G dongle (spoofed Apple ID 05ac:024f): let the logged-in
-# user open its hidraw nodes, so almactl works without sudo.
+# AULA / Alma F108 Pro: let the logged-in user open the keyboard's hidraw nodes,
+# so almactl works without sudo.
+# 2.4G dongle (spoofed Apple ID)
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="05ac", ATTRS{idProduct}=="024f", TAG+="uaccess"
+# USB cable (Sonix)
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0c45", ATTRS{idProduct}=="800a", TAG+="uaccess"
